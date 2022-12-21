@@ -1,12 +1,17 @@
-apply plugin: 'java'
-apply plugin: 'kotlin'
+plugins {
+    id 'java'
+    id 'kotlin'
+    id 'maven-publish'
+}
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation gradleApi()
     implementation project(':matrix-commons')
-    implementation group: 'org.ow2.asm', name: 'asm', version: '7.0'
-    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '7.0'
+    implementation group: 'org.ow2.asm', name: 'asm', version: '9.1'
+    implementation group: 'org.ow2.asm', name: 'asm-commons', version: '9.1'
+    implementation 'com.tencent.caster:caster-transform:0.6.18'
+    implementation 'com.tencent.caster:caster-transformer-asm-core:0.6.18'
     implementation 'com.android.tools.build:gradle:4.0.0'
     implementation project(':matrix-arscutil')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${gradle.KOTLIN_VERSION}"
@@ -23,15 +28,48 @@ sourceSets {
     }
 }
 
-version rootProject.ext.VERSION_NAME
-group rootProject.ext.GROUP
-
-if("External" == rootProject.ext.PUBLISH_CHANNEL) {
-    apply from: rootProject.file('gradle/java-publish.gradle')
+task sourceJar(type: Jar) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.allSource
 }
-else {
-    apply from: rootProject.file('gradle/WeChatPublish.gradle')
-    wechatPublish {
-        artifactId = POM_ARTIFACT_ID
+
+
+def getLocalProperties() {
+    Properties localProperties = new Properties()
+    File file = project.rootProject.file('local.properties')
+    if (file.exists()) {
+        //localProperties.load(file.newDataInputStream()) // 会导致中文乱码
+        localProperties.load(file.newReader("UTF-8")) // 解决 gradle properties 中文乱码
+    }
+    return localProperties
+}
+
+Properties localProperties = getLocalProperties()
+
+publishing {
+    repositories {
+        maven {
+            url = "https://mirrors.tencent.com/repository/maven/thirdparty-snapshots/"
+            credentials {
+                //修改为自己的账号密码，可在mirrors.tencent.com上查询密码
+                username localProperties.getProperty("user")
+                password localProperties.getProperty("password")
+            }
+        }
+    }
+
+    publications {
+        amobileqq(MavenPublication) {
+            groupId "com.tencent.matrix_trace_caster"
+            artifactId "matrix_trace_caster"
+            version '0.3.9'
+            from components.java
+            artifact sourceJar
+            pom.withXml {
+                def propertiesNode = asNode().appendNode('properties')
+                propertiesNode.appendNode('artifactName', 'matrix_trace_caster')
+                propertiesNode.appendNode('artifactDesc', 'caster 插桩的 trace canary')
+            }
+        }
     }
 }

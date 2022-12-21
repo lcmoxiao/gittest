@@ -19,7 +19,7 @@ package com.tencent.matrix.plugin.compat
 import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.internal.api.ReadOnlyBuildType
 import com.android.builder.model.SigningConfig
-import org.objectweb.asm.Opcodes
+import com.tencent.caster.transform.transformer.CasterConsts
 
 class AgpCompat {
 
@@ -39,10 +39,7 @@ class AgpCompat {
 
         @JvmStatic
         val asmApi: Int
-            get() = when {
-                VersionsCompat.greatThanOrEqual(AGPVersion.AGP_7_0_0) -> Opcodes.ASM6
-                else -> Opcodes.ASM5
-            }
+            get() = CasterConsts.ASM_VERSION
     }
 
 }
