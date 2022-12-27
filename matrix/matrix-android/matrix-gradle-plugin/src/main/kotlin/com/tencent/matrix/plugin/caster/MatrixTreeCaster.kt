@@ -19,24 +19,29 @@ package com.tencent.matrix.plugin.caster
 import com.android.builder.model.AndroidProject.FD_OUTPUTS
 import com.google.common.base.Joiner
 import com.tencent.caster.transform.gradle.CasterContext
-import com.tencent.caster.transform.transformer.AsmCoreApiTransformer
+import com.tencent.caster.transform.transformer.AsmTreeApiTransformer
 import com.tencent.caster.transformer.JarClassTransformerInput
 import com.tencent.caster.transformer.TransformerInput
 import com.tencent.matrix.javalib.util.Log
-import com.tencent.matrix.plugin.compat.AgpCompat
-import org.objectweb.asm.ClassVisitor
+import com.tencent.matrix.plugin.caster.MethodCollector.collectMethodInfo
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.ClassNode
 import java.io.File
 import java.io.PrintWriter
 
-class MatrixTraceCaster() : AsmCoreApiTransformer() {
+/**
+ * 第一步、方法信息收集
+ *
+ * Tree 遍历过程中会收集所有需要插桩的方法信息。
+ */
+class MatrixTreeCaster : AsmTreeApiTransformer() {
 
     companion object {
-        const val TAG = "Matrix.TraceTransform"
+        const val TAG = "MatrixTreeCaster"
 
         lateinit var ignoreMethodPrinter: PrintWriter
         lateinit var methodPrinter: PrintWriter
     }
-
 
     override fun onInit(context: CasterContext) {
         super.onInit(context)
@@ -70,23 +75,28 @@ class MatrixTraceCaster() : AsmCoreApiTransformer() {
         }
         ignoreMethodMapFilePath.createNewFile()
         ignoreMethodPrinter = PrintWriter(ignoreMethodMapFilePath)
-        println("MatrixTraceCaster|is init.")
+        Log.i(TAG, "is init.")
     }
 
     override fun getName(): String {
         return "MatrixTraceCaster"
     }
 
-    override fun doTransform(context: CasterContext, node: ClassVisitor, input: TransformerInput): ClassVisitor {
-        if (input is JarClassTransformerInput) {
-            Log.i(TAG, "doTransform, ${input.jarName}, ${input.className}")
-        } else {
-            Log.i(TAG, "doTransform, ${input.inputDir}, ${input.className}")
+    override fun doTransform(context: CasterContext, node: ClassNode, input: TransformerInput): ClassNode {
+        if (node.access and Opcodes.ACC_ABSTRACT > 0 || node.access and Opcodes.ACC_INTERFACE > 0) {
+            return node
         }
-        return CasterMethodVisitor(AgpCompat.asmApi, node)
+        // 遍历收集方法信息
+        node.methods.forEach { method ->
+            collectMethodInfo(method.instructions, node.name, method.name, method.access, method.desc)
+        }
+        return node
     }
 
     override fun onDestroy(context: CasterContext) {
         super.onDestroy(context)
+        methodPrinter.flush()
+        ignoreMethodPrinter.flush()
+        Log.i(TAG, "is destroy. collect method size: ${MethodCollector.incrementCount}")
     }
 }

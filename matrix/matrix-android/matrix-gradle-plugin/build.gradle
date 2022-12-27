@@ -12,6 +12,8 @@ dependencies {
     implementation group: 'org.ow2.asm', name: 'asm-commons', version: '9.1'
     implementation 'com.tencent.caster:caster-transform:0.6.18'
     implementation 'com.tencent.caster:caster-transformer-asm-core:0.6.18'
+    implementation 'com.tencent.caster:caster-transformer-asm-tree:0.6.18'
+    implementation 'com.tencent.caster:caster-transformer-javassist:0.6.18'
     implementation 'com.android.tools.build:gradle:4.0.0'
     implementation project(':matrix-arscutil')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${gradle.KOTLIN_VERSION}"
@@ -62,7 +64,7 @@ publishing {
         amobileqq(MavenPublication) {
             groupId "com.tencent.matrix_trace_caster"
             artifactId "matrix_trace_caster"
-            version '0.3.9'
+            version '0.6.1'
             from components.java
             artifact sourceJar
             pom.withXml {
